@@ -1,5 +1,5 @@
 #unveil.js
-###A very lightweight plugin to lazy load images for jQuery or Zepto.js
+###A lightweight jQuery plugin to lazy load images
 
 
 
