@@ -3,10 +3,24 @@
 
 
 
-Most of us are familiar with the [Lazy Load](http://www.appelsiini.net/projects/lazyload) plugin by [Mika Tuupola](http://www.appelsiini.net/).
-This plugin is very useful and it boosts performance delaying loading of images in long web pages because images outside of viewport (visible part of web page) won't be loaded until the user scrolls to them.
-Lazy Load has some cool options such as custom effects, container, events or data attribute. If you're not gonna use any of them you can reduce the file size by leaving just the essential code to show the images.
-That's what I did and this is my lightweight version of Lazy Load with support for serving high-resolution images to devices with retina displays - less than 1k.
+###What is this
+Lazy-load images to save on bandwidth or just to quicken a web page load time. You can pass a callback which returns the image that was loaded (if it was loaded sucessfully), or you can subscribe to a published jquery event on a certain DOM scope which I call "base". 
+
+###Usage example
+
+    var scrollable_element = $('.scrollable'); // this would be the scope of the "scroll" event
+    scrollable_element.find('img').unveil({ wrapper:scrollable_element, threshold:200, base:scrollable_element });
+    
+    scrollable_element.on('imageLoaded', function(e, img){
+       // might want to show the image with an effect, so a "loaded" class could be added, and your
+       // css might looks like this - `img{ opacity:0; transition:.2s; } img.loaded{ opacity:1; }
+    }
+    
+    scrollable_element.on('deadImage', function(e, img){
+       // might want to remove the photo from the DOM
+    }
+
+
 
 Visit unveil's [project page](http://luis-almeida.github.com/unveil/) to read the documentation and see the demo.
 
