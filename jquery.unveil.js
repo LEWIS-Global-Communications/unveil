@@ -1,9 +1,11 @@
 /**
  * jQuery Unveil
  * A very lightweight jQuery plugin to lazy load images
+ * http://luis-almeida.github.com/unveil
  *
- * Licensed under the MIT license. Based on Luís Almeida "unveil" (http://luis-almeida.github.com/unveil)
- * https://github.com/yairEO/unveil
+ * Licensed under the MIT license.
+ * Copyright 2013 Luís Almeida (modified by Yair Even-Or)
+ * https://github.com/luis-almeida
  */
 ;(function($){
     "use strict";
@@ -11,6 +13,19 @@
     var $DOC = $(document),
         retina = window.devicePixelRatio > 1,
         timer;
+
+    function throttle(callback, limit) {
+        var wait = false;                  // Initially, we're not waiting
+        return function () {               // We return a throttled function
+            if (!wait) {                   // If we're not waiting
+                callback.call();           // Execute users function
+                wait = true;               // Prevent future invocations
+                setTimeout(function () {   // After a period of time
+                    wait = false;          // And allow future invocations
+                }, limit);
+            }
+        }
+    }
 
 
     function Unveil(opts, images){
@@ -31,7 +46,7 @@
         // Static - means unveil will not act as a real lazy loader and will not check which images are visible, and will not run any function automatically
         if( !this.opts.static ){
             this.wrapper
-                .on('scroll.unveil', _.throttle(that.check.bind(this), 200)) // do NOT call 'unveil' until user had stopped scrolling
+                .on('scroll.unveil', throttle(that.check.bind(this), 200)) // do NOT call 'unveil' until user had stopped scrolling
                 .on('resize.unveil', this.check.bind(this)); // because there is no resize event on an element
 
             // immediately check of current images are on-screen
