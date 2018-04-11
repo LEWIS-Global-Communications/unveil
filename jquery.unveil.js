@@ -1,58 +1,54 @@
 /**
  * jQuery Unveil
  * A very lightweight jQuery plugin to lazy load images
- * http://luis-almeida.github.com/unveil
  *
- * Licensed under the MIT license.
- * Copyright 2013 Luís Almeida (modified by Yair Even-Or)
- * https://github.com/luis-almeida
+ * Licensed under the MIT license. Based on Luís Almeida "unveil" (http://luis-almeida.github.com/unveil)
+ * https://github.com/yairEO/unveil
  */
-;
-(function($){
+;(function($){
     "use strict";
 
     var $DOC = $(document),
-        //$WIN = $(window),
         retina = window.devicePixelRatio > 1,
-        timer,
-        attrib = "data-src"; // retina ? "data-src-retina" : "data-src"
+        timer;
 
 
     function Unveil(opts, images){
         var that = this;
 
-        this.opts = {};
+        this.opts = $.extend({
+            base       : $DOC,
+            delayCheck : 0,
+            attrib     : "src"
+        }, opts);
 
         this.wrapper     = opts.wrapper;
         this.threshold   = opts.threshold || 0;
         this.callback    = opts.callback;
 
-        this.opts.base   = opts.base || $DOC;
-
         this.images = images;
 
-        // do not call 'unveil' until user had stopped scrolling
-        this.wrapper
-            .on('scroll.unveil', _.throttle(that.check.bind(this), 200))
-            .on('resize.unveil', this.check.bind(this)); // because there is no resize event on an element
+        // Static - means unveil will not act as a real lazy loader and will not check which images are visible, and will not run any function automatically
+        if( !this.opts.static ){
+            this.wrapper
+                .on('scroll.unveil', _.throttle(that.check.bind(this), 200)) // do NOT call 'unveil' until user had stopped scrolling
+                .on('resize.unveil', this.check.bind(this)); // because there is no resize event on an element
 
-        // immediately check of current images are on-screen
-        this.check();
+            // immediately check of current images are on-screen
+            setTimeout(this.check.bind(this), this.opts.delayCheck);
+        }
     }
 
     Unveil.prototype = {
         showImage : function(img){
             var that = this,
-                source = img.getAttribute(attrib);
-
-            // replace to lower-res images for small screen sizes
-          //  if( window.screen.availWidth < 500 )
-          //      source = source.replace('/3_', '/2_');  // change the "src" according to the screen's size
+                source = img.getAttribute("data-" + this.opts.attrib);
 
             //source = source || img.getAttribute("data-src");
             if( source ){
-                img.setAttribute("src", source);
-                img.removeAttribute("data-src");
+                img.setAttribute(this.opts.attrib, source);
+                img.src = source;
+                img.removeAttribute( "data-" + this.opts.attrib );
 
                 img.onerror = function(){
                     img.onerror = null;
@@ -85,16 +81,18 @@
         },
 
         check : function(){
-            //console.log(images.eq(0).closest('.photos') );
             var inview,
                 that = this,
                 relativeOffset = that.wrapper[0] == window ? 0 : that.wrapper.offset().top,
                 wt = that.wrapper.scrollTop(),
                 wb = wt + that.wrapper.height();
 
+            // for dynamicly-generated image, a slightly slower appriach
+            if( this.opts.delegation )
+                this.images = this.opts.delegation.find('img[data-src]');
 
             inview = this.images.filter(function(){
-                if( this.src || !$.contains(document.documentElement, this) )
+                if( !this.dataset.src || !$.contains(document.documentElement, this) || getComputedStyle(this, null).display == 'none' || getComputedStyle(this, null).width == '0px' )
                     return false;
 
                 //if( el.hasClass('hidden') )
@@ -114,6 +112,38 @@
             });
             //console.log('inview: ', inview);
             this.images = this.images.not(inview);
+        },
+
+        /**
+         * Convert an imageURL to a
+         * base64 dataURL via canvas
+         *
+         * @param   {String}  url
+         * @param   {Object}  options
+         * @param   {String}  options.outputFormat [outputFormat='image/png']
+         * @param   {Float}   options.quality [quality=1.0]
+         * @return  {Promise}
+         * @docs    https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement#Methods
+         * @author  HaNdTriX
+         */
+        imgURLToDataURL : function(url, options) {
+            options = options || {};
+            return new Promise(function(resolve, reject){
+                img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = function(){
+                    var canvas = document.createElement('CANVAS'),
+                        ctx = canvas.getContext('2d'),
+                        dataURL;
+                    canvas.height = img.height;
+                    canvas.width = img.width;
+                    ctx.drawImage(img, 0, 0);
+                    dataURL = canvas.toDataURL(options.outputFormat, options.quality);
+                    resolve(dataURL);
+                    canvas = null;
+                };
+                img.src = url;
+            });
         }
     }
 
@@ -121,18 +151,20 @@
     ////////////////////////////////
     // jQuery Plugin (per instance)
 
+    window.Unveil = Unveil;
+
     $.fn.unveil = function(opts, callback){  // {wrapper, threshold, callback, base}
         opts = opts || {};
         opts.wrapper = opts.wrapper ? $(opts.wrapper) : $(window);
         opts.callback = callback;
 
-        var unveil = opts.wrapper.data('_unveil'),
-            images = this;
+        var unveil = opts.wrapper.data('_unveil');
+
 
          // if the image doesn't have a 'data-src' attribute, remove it from the set
-        images.filter(function(){
-            return this.getAttribute(attrib);
-        })
+        // images.filter(function(){
+        //     return this.getAttribute(attrib);
+        // })
 
 /* sometimes will fail if some unveil happens with different settings, then they won't take place since the first once is cached
         if( unveil ){
@@ -141,9 +173,10 @@
             return;
         }
 */
-        unveil = new Unveil(opts, images);
 
-        opts.wrapper.data('_unveil', unveil);
+        unveil = new Unveil(opts, this);
+
+        (opts.delegation || opts.wrapper).data('_unveil', unveil);
 
         return this;
     };
